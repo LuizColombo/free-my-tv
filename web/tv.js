@@ -143,7 +143,8 @@ var TV = (function () {
     'NvZ26VG9Yw.HBOGOLAG': 'Max',
     'rJeHak5zRg.Spotify': 'Spotify',
     'evKhCgZelL.AmazonIgnitionLauncher2': 'Prime Video',
-    'org.tizen.globoplayapp': 'Globoplay'
+    'org.tizen.globoplayapp': 'Globoplay',
+    'org.tizen.tv-viewer': 'TV ao vivo'
   };
 
   // Samsung's settings menu on Tizen 3, which answers no "settings" app control.
