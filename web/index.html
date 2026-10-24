@@ -8,16 +8,15 @@
 </head>
 <body>
 <script>
-  // The look the home screen last had, before anything is drawn, so a night start doesn't flash the day one first.
+  // One dark-blue look day and night (the Ondas wallpaper), set before anything is drawn.
   try {
-    if (localStorage.getItem('fmtv.night') === 'true') {
-      document.documentElement.style.background = '#0B0B0D';
-      document.body.className = 'night';
-    }
+    document.documentElement.style.background = '#0A1830';
+    document.body.className = 'night';
   } catch (e) {}
 </script>
 <div id="stage">
   <div id="sky" class="layer">
+    <div class="wall"></div>
     <div class="grad day"></div>
     <div class="grad night"></div>
     <canvas id="bgA" width="48" height="27"></canvas>

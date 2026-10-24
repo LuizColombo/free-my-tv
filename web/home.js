@@ -1005,11 +1005,11 @@
   var lastNight = null;
 
   function checkNight() {
-    var night = Data.isNight(Date.now());
+    var night = true;   // the Ondas wallpaper is dark blue all day: always the night look
     setClass(body, 'night', night);
     if (night === lastNight) return;
     lastNight = night;
-    document.documentElement.style.background = night ? '#0B0B0D' : '';
+    document.documentElement.style.background = night ? '#0A1830' : '';
     try { localStorage.setItem('fmtv.night', night ? 'true' : 'false'); } catch (e) {}   // for index.html, next start
   }
 
