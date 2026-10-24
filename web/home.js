@@ -324,6 +324,7 @@
     focusRows($('langpick'), st.lang, st.zone === Z.LANG);
     if (langHint) langHint.textContent = (st.lang + 1) + ' / ' + languageChoices().length + '  ·  ' + tr('OK picks, Back cancels.');
     setClass(body, 'drawer-open', st.zone === Z.DRAWER);
+    perfMeter(st.zone === Z.DRAWER);
   }
 
   function focusRows(sheet, index, on) {
@@ -531,6 +532,7 @@
     drawerItems.push({label: tr('All Apps'), symbol: 'apps', run: openApps});
     drawerItems.push({label: tr('Home Settings'), symbol: 'settings', run: openSettings});
     drawerItems.push({label: tr('TV Settings'), symbol: 'tv_settings', run: tvSettings});
+    drawerItems.push({label: tr('Device Care'), symbol: 'sparkles', run: deviceCare});
     var n = drawerItems.length, gap = 18, groupGap = 56, groups = drawerInputs > 0 && drawerInputs < n ? 2 : 1;
     var tw = Math.min(230, (1760 - Math.max(0, n - groups) * gap - (groups - 1) * groupGap) / Math.max(1, n));
     var xPos = 80;
@@ -557,22 +559,71 @@
     var old = d.querySelectorAll('.panel');
     for (var o = 0; o < old.length; o++) d.removeChild(old[o]);
     var wx = Prefs.weather(), coins = Data.activeCoins(), qt = coins.length > 0;
-    var split = 80 + 1760 * 0.585;
-    if (wx) {
-      var w = el('div', 'panel glass', d);
-      w.id = 'weather';
-      w.style.left = '80px';
-      w.style.width = ((qt ? split - 16 : 1840) - 80) + 'px';
-      renderWeather(w);
+    // weather, performance and prices side by side; whatever is off gives its width to the others
+    var parts = [];
+    if (wx) parts.push(['weather', 0.48]);
+    parts.push(['perf', 0.22]);
+    if (qt) parts.push(['prices', 0.3]);
+    var sum = 0, gap = 32, x = 80;
+    for (var p = 0; p < parts.length; p++) sum += parts[p][1];
+    for (var i = 0; i < parts.length; i++) {
+      var card = el('div', 'panel glass', d), width = (1760 - gap * (parts.length - 1)) * parts[i][1] / sum;
+      card.id = parts[i][0];
+      card.style.left = x + 'px';
+      card.style.width = width + 'px';
+      x += width + gap;
+      if (card.id === 'weather') renderWeather(card);
+      else if (card.id === 'perf') renderPerf(card);
+      else renderPrices(card, coins);
     }
-    if (qt) {
-      var q = el('div', 'panel glass', d);
-      q.id = 'prices';
-      var left = wx ? split + 16 : 80;
-      q.style.left = left + 'px';
-      q.style.width = (1840 - left) + 'px';
-      renderPrices(q, coins);
-    }
+  }
+
+  // MARK: - Performance: this screen's frame rate and the TV's memory and CPU, measured only while the drawer is open
+
+  var perfTimer = 0, perfFrames = 0, perfOn = false, perfLast = {fps: NaN, free: NaN, total: NaN, cpu: NaN};
+
+  function perfFrame() {
+    if (!perfOn) return;
+    perfFrames++;
+    window.requestAnimationFrame(perfFrame);
+  }
+
+  function perfMeter(on) {
+    if (on === perfOn) return;
+    perfOn = on;
+    clearInterval(perfTimer);
+    if (!on) return;
+    perfFrames = 0;
+    window.requestAnimationFrame(perfFrame);
+    perfTimer = setInterval(function () {
+      perfLast.fps = perfFrames;
+      perfFrames = 0;
+      TV.stats(function (x) {
+        perfLast.free = x.free; perfLast.total = x.total; perfLast.cpu = x.cpu;
+        var card = $('perf');
+        if (card) renderPerf(card);
+      });
+    }, 1000);
+  }
+
+  function gb(bytes) {
+    var v = bytes / 1073741824;
+    try { return v.toLocaleString(I18N.locale(), {minimumFractionDigits: 1, maximumFractionDigits: 1}); } catch (e) { return v.toFixed(1); }
+  }
+
+  function renderPerf(card) {
+    card.innerHTML = '';
+    el('div', 'head', card, tr('Performance'));
+    var f = el('div', 'fps', card, isNaN(perfLast.fps) ? '–' : String(perfLast.fps));
+    el('span', 'unit', f, 'fps');
+    var mem = el('div', 'stat', card);
+    mem.style.top = '196px';
+    el('span', '', mem, tr('Free memory'));
+    el('span', 'v', mem, isNaN(perfLast.free) ? '–' : trf('{free} of {total} GB', {free: gb(perfLast.free), total: gb(perfLast.total)}));
+    var cpu = el('div', 'stat', card);
+    cpu.style.top = '240px';
+    el('span', '', cpu, 'CPU');
+    el('span', 'v', cpu, isNaN(perfLast.cpu) ? '–' : Math.round(perfLast.cpu * 100) + '%');
   }
 
   function renderWeather(card) {
@@ -856,6 +907,12 @@
         if (!ok) toast(trf("Couldn't open {app}.", {app: name || id}));
       });
     };
+  }
+
+  function deviceCare() {
+    TV.deviceCare(function (ok) {
+      if (!ok) toast(tr("Couldn't open TV Settings"));
+    });
   }
 
   function tvSettings() {

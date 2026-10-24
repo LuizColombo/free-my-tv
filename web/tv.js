@@ -151,6 +151,10 @@ var TV = (function () {
   // Samsung's settings menu on Tizen 3, which answers no "settings" app control.
   var SAMSUNG_MENU = 'org.tizen.menu';
 
+  // Samsung's Device Care (Settings, Support): frees memory and checks the TV. A 2022 Tizen 6.5 refuses to open it
+  // from outside (launch failed[400]), so the TV's settings open instead.
+  var DEVICE_CARE = 'com.samsung.TVDeviceCare';
+
   // Samsung's live TV viewer: it shows whichever source the TV is on (the antenna, or the HDMI picked here).
   var SAMSUNG_VIEWER = 'org.tizen.tv-viewer';
 
@@ -399,6 +403,23 @@ var TV = (function () {
     settings: function (done) {
       if (samsung) samsungSettings(done);
       else this.launch('com.palm.app.settings', null, done);
+    },
+
+    /** Samsung's Device Care, else the TV's settings (where it is, under Support); done(ok). */
+    deviceCare: function (done) {
+      var tv = this;
+      if (!samsung) { tv.settings(done); return; }
+      samsungLaunch(DEVICE_CARE, function (ok) { if (ok) { if (done) done(true); } else tv.settings(done); });
+    },
+
+    /** The TV's memory (bytes) and CPU load (0 to 1), where Samsung answers; NaN otherwise. done({free, total, cpu}). */
+    stats: function (done) {
+      var out = {free: NaN, total: NaN, cpu: NaN}, si = samsung && window.tizen && window.tizen.systeminfo;
+      if (!si) { done(out); return; }
+      try { out.free = si.getAvailableMemory(); out.total = si.getTotalMemory(); } catch (e) {}
+      try {
+        si.getPropertyValue('CPU', function (c) { out.cpu = c.load; done(out); }, function () { done(out); });
+      } catch (e) { done(out); }
     },
 
     /** LG: keeps the TV's screensaver away while ours will take over (`hold` says when). */
